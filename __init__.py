@@ -78,16 +78,22 @@ class CUSTOM_PT_HitmanAbsolutionPanel(bpy.types.Panel):
 
 
 class ImportSettings(bpy.types.PropertyGroup):
+    include_gizmos: bpy.props.BoolProperty(
+        name="Include gizmos",
+        description="",
+        default=False
+    )
+
     include_volume_boxes: bpy.props.BoolProperty(
         name="Include nodes with volume boxes",
         description="",
-        default=True
+        default=False
     )
 
     include_volume_spheres: bpy.props.BoolProperty(
         name="Include nodes with volume spheres",
         description="",
-        default=True
+        default=False
     )
 
     include_visibility: bpy.props.BoolProperty(
@@ -110,6 +116,8 @@ class CUSTOM_PT_HitmanAbsolutionImportOptions(bpy.types.Panel):
         layout.use_property_split = False
         layout.use_property_decorate = False
 
+        row = layout.row(align=True)
+        row.prop(context.scene.import_settings, "include_gizmos")
         row = layout.row(align=True)
         row.prop(context.scene.import_settings, "include_volume_boxes")
         row = layout.row(align=True)
@@ -157,9 +165,8 @@ class CUSTOM_OT_LoadModel(bpy.types.Operator):
             return{'FINISHED'}
 
         prim_runtime_resource_id = (hmaexport.to_unsigned_32(item.prim_id_high) << 32) | hmaexport.to_unsigned_32(item.prim_id_low)
-        output_folder_path = context.preferences.addons[__name__].preferences.output_folder_path
 
-        obj = hma.import_model_in_blender(context, prim_runtime_resource_id, hma.scene_json["Scene"][item.index], item.name, None, item.prim_file_name)
+        obj = hma.import_model_in_blender(context, prim_runtime_resource_id, hma.scene_json["Scene"][item.index], item.name, None, item.prim_file_name, True)
         obj.matrix_local = (
             (1.0, 0.0, 0.0, 0.0),
             (0.0, 1.0, 0.0, 0.0),
