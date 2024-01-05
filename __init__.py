@@ -161,9 +161,9 @@ class CUSTOM_OT_LoadModel(bpy.types.Operator):
 
         obj = hma.import_model_in_blender(context, prim_runtime_resource_id, hma.scene_json["Scene"][item.index], item.name, None, item.prim_file_name)
         obj.matrix_local = (
-            (-1, 0.0, 0.0, 0.0),
-            (0.0, 0.0, 1, 0.0),
-            (0.0, -1, 0.0, 0.0),
+            (1.0, 0.0, 0.0, 0.0),
+            (0.0, 1.0, 0.0, 0.0),
+            (0.0, 0.0, 1.0, 0.0),
             (0.0, 0.0, 0.0, 1.0)
         )
 
