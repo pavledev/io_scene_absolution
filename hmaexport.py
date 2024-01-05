@@ -25,8 +25,10 @@ class HitmanAbsolution:
         self.hmaexport = ctypes.CDLL(os.path.abspath(os.path.join(os.path.dirname(__file__), "AbsolutionSceneExporter.dll")), winmode=0)
         self.hmaexport.LoadData.argtypes = (ctypes.c_uint32, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p)
         self.hmaexport.LoadData.restype = None
-        self.hmaexport.ExportModel.argtypes = (ctypes.c_uint64, ctypes.c_char_p)
+        self.hmaexport.ExportModel.argtypes = (ctypes.c_uint64,)
         self.hmaexport.ExportModel.restype = None
+        self.hmaexport.ExportAllModels.argtypes = ()
+        self.hmaexport.ExportAllModels.restype = None
         self.hmaexport.GetMaterialJson.argtypes = (ctypes.c_uint64,)
         self.hmaexport.GetMaterialJson.restype = ctypes.c_char_p
         self.hmaexport.GetSceneJson.argtypes = ()
@@ -60,8 +62,9 @@ class HitmanAbsolution:
 
                 context.scene.custom_index = item.index
 
-    def import_model_in_blender(self, context, prim_runtime_resource_id, model, name, parent, prim_file_name):
-        self.hmaexport.ExportModel(prim_runtime_resource_id, self.output_folder_path.encode())
+    def import_model_in_blender(self, context, prim_runtime_resource_id, model, name, parent, prim_file_name, export_prim):
+        if export_prim:
+            self.hmaexport.ExportModel(prim_runtime_resource_id)
 
         filepath = os.path.join(self.output_folder_path, "Models", f"{prim_file_name}_{prim_runtime_resource_id}.obj")
 
@@ -119,6 +122,7 @@ class HitmanAbsolution:
 
     def import_models(self, context, index, parent):
         self.update_progress()
+
         model = self.scene_json["Scene"][index]
         name = str(model["Index"]) + " - " + model["Name"]
         if len(name) > 63:
@@ -130,7 +134,7 @@ class HitmanAbsolution:
             is_model = True
 
         if is_model and not exclude_model:
-            obj = self.import_model_in_blender(context, model["PRIMRuntimeResourceID"], model, name, parent, model["PRIMFileName"])
+            obj = self.import_model_in_blender(context, model["PRIMRuntimeResourceID"], model, name, parent, model["PRIMFileName"], False)
         else:
             obj = bpy.data.objects.new(name, None)
             context.collection.objects.link(obj)
@@ -143,13 +147,16 @@ class HitmanAbsolution:
             if self.root_node == None:
                 self.root_node = obj
 
-        if "Children" in model:
-            for child in model["Children"]:
-                self.import_models(context, child["Index"], name)
+        #if model["Name"] == "Scene":
+            if "Children" in model:
+                for child in model["Children"]:
+                    self.import_models(context, child["Index"], name)
 
     def import_map(self, context):
         from bpy.ops import _BPyOpsSubModOp
         view_layer_update = _BPyOpsSubModOp._view_layer_update
+
+        self.hmaexport.ExportAllModels()
 
         def dummy_view_layer_update(context):
             pass
@@ -158,23 +165,18 @@ class HitmanAbsolution:
             _BPyOpsSubModOp._view_layer_update = dummy_view_layer_update
             time_start = time.time()
             self.root_node = None
-            root_index = -1
-
-            for model in self.scene_json["Scene"]:
-                if model["Parent"] == None:
-                    root_index = model["Index"]
-                    break
+            root_index = self.scene_json["RootEntityIndex"]
 
             if root_index != -1:
                 self.progress = 0
                 self.progress_step = int(len(self.scene_json["Scene"]) / 100)
                 bpy.context.window_manager.progress_begin(0, 100)
-                
+
                 self.import_models(context, root_index, None)
                 self.root_node.matrix_local = (
-                    (-0.01, 0.0, 0.0, 0.0),
-                    (0.0, 0.0, 0.01, 0.0),
-                    (0.0, -0.01, 0.0, 0.0),
+                    (1.0, 0.0, 0.0, 0.0),
+                    (0.0, 1.0, 0.0, 0.0),
+                    (0.0, 0.0, 1.0, 0.0),
                     (0.0, 0.0, 0.0, 1.0)
                 )
                 bpy.context.window_manager.progress_end()
